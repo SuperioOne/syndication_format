@@ -1,19 +1,21 @@
+use core::borrow::Borrow;
 use core::fmt::Display;
 use core::ops::Deref;
 use core::str::FromStr;
 
 use crate::error::InvalidAttributeName;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AttributeName {
   name: Box<str>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AttributeValue {
   value: Box<str>,
 }
 
+#[derive(Clone)]
 pub struct Attribute {
   pub name: AttributeName,
   pub value: AttributeValue,
@@ -21,6 +23,7 @@ pub struct Attribute {
 
 // Attributes impls
 
+#[derive(Clone)]
 pub struct AttributeMap {
   // implementing Map structure with Vec since expected item count is mostly less than 5.
   inner: Vec<Attribute>,
@@ -61,6 +64,10 @@ impl AttributeMap {
     }
   }
 
+  pub fn len(&self) -> usize {
+    self.inner.len()
+  }
+
   pub fn set(&mut self, name: AttributeName, value: AttributeValue) {
     for Attribute {
       name: attr_name,
@@ -90,9 +97,15 @@ impl AttributeMap {
     None
   }
 
-  pub fn iter<'a>(&'a self) -> AttributeMapIter<std::slice::Iter<'a, Attribute>, &'a Attribute> {
+  pub fn iter<'a>(&'a self) -> AttributeMapIter<core::slice::Iter<'a, Attribute>, &'a Attribute> {
     AttributeMapIter {
       inner_iterator: self.inner.iter(),
+    }
+  }
+
+  pub fn set_from(&mut self, other: &Self) {
+    for entry in other {
+      self.set(entry.name.clone(), entry.value.clone())
     }
   }
 }
@@ -100,7 +113,7 @@ impl AttributeMap {
 impl<'a> IntoIterator for &'a AttributeMap {
   type Item = &'a Attribute;
 
-  type IntoIter = AttributeMapIter<std::slice::Iter<'a, Attribute>, &'a Attribute>;
+  type IntoIter = AttributeMapIter<core::slice::Iter<'a, Attribute>, &'a Attribute>;
 
   fn into_iter(self) -> Self::IntoIter {
     Self::IntoIter {
@@ -134,7 +147,7 @@ impl Deref for AttributeName {
 }
 
 impl Display for AttributeName {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.write_str(&self.name)
   }
 }
@@ -162,10 +175,15 @@ impl AttributeName {
 
 // TODO: encodings!
 
-impl From<&str> for AttributeValue {
-  fn from(value: &str) -> Self {
+impl<T> From<T> for AttributeValue
+where
+  T: Borrow<str>,
+{
+  fn from(value: T) -> Self {
+    let str_ref: &str = value.borrow();
+
     Self {
-      value: Box::from(value),
+      value: Box::from(str_ref),
     }
   }
 }
@@ -179,7 +197,7 @@ impl Deref for AttributeValue {
 }
 
 impl Display for AttributeValue {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.write_str(&self.value)
   }
 }

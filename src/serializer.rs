@@ -43,10 +43,24 @@ pub trait Serialize {
     S: Serializer;
 }
 
+// Blanket implementation for serializable value type references.
+impl<T> Serialize for &'_ T
+where
+  T: Serialize,
+{
+  fn serialize<S>(&self, serializer: S) -> Result<()>
+  where
+    S: Serializer,
+  {
+    (*self).serialize(serializer)?;
+    Ok(())
+  }
+}
+
 pub trait Serializer: Sized {
   type ElementSerializer: ElementSerializer;
 
-  /// Serializes `&str` as element's value.
+  /// Serializes `str` reference as element's value.
   fn serialize_str(self, value: &str) -> Result<()>;
 
   fn serialize<V>(self, value: V) -> Result<()>
@@ -54,8 +68,6 @@ pub trait Serializer: Sized {
     V: Serialize;
 
   /// Creates an element tag.
-  ///
-  /// > **Important:** Make sure to call `.end()` to close element tag.
   ///
   /// Example:
   /// ```ignore
@@ -87,20 +99,20 @@ pub trait Serializer: Sized {
   /// ```
   fn serialize_element(
     self,
-    name: &'static str,
-    namespace: Option<&'static str>,
-    attributes: Option<AttributeMap>,
+    name: &str,
+    namespace: Option<&str>,
+    attributes: Option<&AttributeMap>,
   ) -> Result<Self::ElementSerializer>;
 
-  /// Creates an empty element without any children or value.
+  /// Creates an empty element without any child node and value.
   /// ```xml
   ///   <tag />
   /// ```
   fn serialize_empty_element(
     self,
-    name: &'static str,
-    namespace: Option<&'static str>,
-    attributes: Option<AttributeMap>,
+    name: &str,
+    namespace: Option<&str>,
+    attributes: Option<&AttributeMap>,
   ) -> Result<()>;
 }
 
@@ -126,14 +138,18 @@ where
   W: Write + ?Sized,
 {
   inner: &'a mut XmlSerializer<'a, W>,
-  name: &'a str,
-  namespace: Option<&'a str>,
+  name: Box<str>,
+  namespace: Option<Box<str>>,
 }
 
 impl<'a, W> XmlSerializer<'a, W>
 where
   W: Write + ?Sized,
 {
+  pub fn new(writer: &'a mut W) -> Self {
+    Self { writer }
+  }
+
   #[inline]
   fn create_element(
     &mut self,
@@ -208,26 +224,26 @@ where
 
   fn serialize_element(
     self,
-    name: &'static str,
-    namespace: Option<&'static str>,
-    attributes: Option<AttributeMap>,
+    name: &str,
+    namespace: Option<&str>,
+    attributes: Option<&AttributeMap>,
   ) -> Result<Self::ElementSerializer> {
-    self.create_element(name, namespace, attributes.as_ref(), ElementType::NoEmpty)?;
+    self.create_element(name, namespace, attributes.as_deref(), ElementType::NoEmpty)?;
 
     Ok(Self::ElementSerializer {
       inner: self,
-      name,
-      namespace,
+      name: Box::from(name),
+      namespace: namespace.map(|f| Box::from(f)),
     })
   }
 
   fn serialize_empty_element(
     self,
-    name: &'static str,
-    namespace: Option<&'static str>,
-    attributes: Option<AttributeMap>,
+    name: &str,
+    namespace: Option<&str>,
+    attributes: Option<&AttributeMap>,
   ) -> Result<()> {
-    self.create_element(name, namespace, attributes.as_ref(), ElementType::Empty)?;
+    self.create_element(name, namespace, attributes.as_deref(), ElementType::Empty)?;
 
     Ok(())
   }
@@ -254,7 +270,9 @@ where
   }
 
   fn end(self) -> Result<()> {
-    self.inner.close_element(self.name, self.namespace)
+    self
+      .inner
+      .close_element(&self.name, self.namespace.as_deref())
   }
 }
 
@@ -279,7 +297,7 @@ mod test {
     value: usize,
   }
 
-  impl Serialize for &ListItem {
+  impl Serialize for ListItem {
     fn serialize<S>(&self, serializer: S) -> Result<()>
     where
       S: Serializer,
@@ -291,13 +309,13 @@ mod test {
         AttributeValue::new(&self.value.to_string()),
       );
 
-      serializer.serialize_empty_element("li", Some("xhtml"), Some(attr))?;
+      serializer.serialize_empty_element("li", Some("xhtml"), Some(&attr))?;
 
       Ok(())
     }
   }
 
-  impl Serialize for &[ListItem] {
+  impl Serialize for Vec<ListItem> {
     fn serialize<S>(&self, serializer: S) -> Result<()>
     where
       S: Serializer,
@@ -314,7 +332,7 @@ mod test {
     }
   }
 
-  impl Serialize for &Title {
+  impl Serialize for Title {
     fn serialize<S>(&self, serializer: S) -> Result<()>
     where
       S: Serializer,
@@ -334,7 +352,7 @@ mod test {
       let mut root_element = serializer.serialize_element("root", None, None).unwrap();
 
       root_element.serialize(&self.title)?;
-      root_element.serialize(self.list.as_slice())?;
+      root_element.serialize(&self.list)?;
       root_element.end()?;
 
       Ok(())

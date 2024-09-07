@@ -48,7 +48,7 @@ where
   }
 
   #[inline]
-  fn write_fmt(&mut self, fmt: std::fmt::Arguments) -> super::Result<()> {
+  fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> super::Result<()> {
     self.inner_writer.write_fmt(fmt)?;
     Ok(())
   }
@@ -106,7 +106,7 @@ where
   }
 
   #[inline]
-  fn write_fmt(&mut self, fmt: std::fmt::Arguments) -> super::Result<()> {
+  fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> super::Result<()> {
     if self.is_next_line {
       self.write_indentation()?;
     }
