@@ -1,107 +1,142 @@
 use std::borrow::Cow;
 
-#[derive(Copy, Clone)]
-pub enum EscapeNotation {
-  /// Numeric reference style for escaping special characters.
-  ///
-  /// Examples:
-  /// `"` => `&#34;`
-  /// `&` => `&#38;`
-  /// `'` => `&#39;`
-  /// `<` => `&#60;`
-  /// `>` => `&#62;`
-  Numeric,
+static EMPTY: &'static str = "";
 
-  /// Named reference style for escaping special characters.
-  ///
-  /// Examples:
-  /// `"` => `&quot;`
-  /// `&` => `&amp;`
-  /// `'` => `&apos;`
-  /// `<` => `&lt`
-  /// `>` => `&gt;`
-  Named,
-}
-
-impl Default for EscapeNotation {
-  fn default() -> Self {
-    Self::Named
-  }
-}
-
-// Hash map for escape sequences
-static ESCAPE_LOOKUP_TABLE: &'static [Option<&'static str>; 32] = &[
-  Some("&#62;"),
-  Some("&quot;"),
-  None,
-  None,
-  Some("&#34;"),
-  Some("&amp;"),
-  Some("&apos;"),
-  None,
-  Some("&#38;"),
-  Some("&#39;"),
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  None,
-  Some("&lt;"),
-  None,
-  Some("&gt;"),
-  Some("&#60;"),
-  None,
+static ESCAPE_LOOKUP_TABLE: &'static [&'static str; 256] = &[
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, "&quot;", EMPTY, EMPTY, EMPTY, "&amp;", "&apos;",
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, "&lt;", EMPTY, "&gt;", EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+  EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
 ];
 
 #[inline]
-fn get_escaped(value: u8, notation: EscapeNotation) -> Option<&'static str> {
-  let position: usize = match notation {
-    EscapeNotation::Numeric => (value + 2) & 0x1F,
-    EscapeNotation::Named => (value - 1) & 0x1F,
-  } as usize;
-
-  // unwrap() is safe to use. `position` is always between 0-31.
-  *ESCAPE_LOOKUP_TABLE.get(position).unwrap()
+fn get_escaped(value: u8) -> &'static str {
+  *ESCAPE_LOOKUP_TABLE.get(value as usize).unwrap()
 }
 
-pub fn escape_str<'a>(text: &'a str, notation: EscapeNotation) -> Cow<'a, str> {
-  // TODO: Implement a avx/swar search and replace
+pub fn escape_str<'a>(text: &'a str) -> Cow<'a, str> {
+  for (idx, byte) in text.as_bytes().iter().enumerate() {
+    if get_escaped(*byte) != EMPTY {
+      let mut escaped_text = String::with_capacity(text.len());
+      escaped_text.push_str(&text[..idx]);
+
+      return Cow::Owned(escape_string(&text[idx..], escaped_text));
+    }
+  }
+
   Cow::Borrowed(text)
+}
+
+#[inline]
+fn escape_string<'a>(src: &'a str, mut dest: String) -> String {
+  let mut last = 0;
+
+  for (idx, byte) in src.as_bytes().iter().enumerate() {
+    let escaped = get_escaped(*byte);
+
+    if escaped != EMPTY {
+      if last != idx {
+        dest.push_str(&src[last..idx]);
+      }
+
+      dest.push_str(escaped);
+      last = idx + 1;
+    }
+  }
+
+  if last < (src.len() - 1) {
+    dest.push_str(&src[last..]);
+  }
+
+  dest
 }
 
 #[cfg(test)]
 mod test {
-  use super::{get_escaped, EscapeNotation};
+  use super::{escape_str, get_escaped};
 
   #[test]
   fn escape_lookups() {
     let test_cases = vec![
-      (b'"', EscapeNotation::Named, "&quot;"),
-      (b'"', EscapeNotation::Numeric, "&#34;"),
-      (b'&', EscapeNotation::Named, "&amp;"),
-      (b'&', EscapeNotation::Numeric, "&#38;"),
-      (b'\'', EscapeNotation::Named, "&apos;"),
-      (b'\'', EscapeNotation::Numeric, "&#39;"),
-      (b'<', EscapeNotation::Named, "&lt;"),
-      (b'<', EscapeNotation::Numeric, "&#60;"),
-      (b'>', EscapeNotation::Named, "&gt;"),
-      (b'>', EscapeNotation::Numeric, "&#62;"),
+      (b'"', "&quot;"),
+      (b'&', "&amp;"),
+      (b'\'', "&apos;"),
+      (b'<', "&lt;"),
+      (b'>', "&gt;"),
     ];
 
     for case in test_cases.iter() {
-      assert_eq!(Some(case.2), get_escaped(case.0, case.1));
+      assert_eq!(case.1, get_escaped(case.0));
+    }
+  }
+
+  #[test]
+  fn escape_special_chars() {
+    let input = "<div> '\"COOL&CREATE\"' </div>";
+    let escaped = escape_str(&input);
+
+    match escaped {
+      std::borrow::Cow::Borrowed(_) => {
+        assert!(false, "It shouldn't returned borrowed text back.")
+      }
+      std::borrow::Cow::Owned(escaped_text) => assert_eq!(
+        "&lt;div&gt; &apos;&quot;COOL&amp;CREATE&quot;&apos; &lt;/div&gt;",
+        &escaped_text
+      ),
+    }
+  }
+
+  // Tests potential edge cases
+  #[test]
+  fn escape_once() {
+    let start_input = "&Test";
+    let escaped = escape_str(&start_input);
+
+    match escaped {
+      std::borrow::Cow::Borrowed(_) => {
+        assert!(false, "It shouldn't returned borrowed text back.")
+      }
+      std::borrow::Cow::Owned(escaped_text) => assert_eq!("&amp;Test", &escaped_text),
+    }
+
+    let end_input = "Test&";
+    let escaped = escape_str(&end_input);
+    match escaped {
+      std::borrow::Cow::Borrowed(_) => {
+        assert!(false, "It shouldn't returned borrowed text back.")
+      }
+      std::borrow::Cow::Owned(escaped_text) => assert_eq!("Test&amp;", &escaped_text),
+    }
+  }
+
+  #[test]
+  fn escape_non_special_chars() {
+    let input = "Cool and Create";
+    let escaped = escape_str(&input);
+
+    match escaped {
+      std::borrow::Cow::Borrowed(escaped_text) => {
+        assert_eq!("Cool and Create", escaped_text)
+      }
+      std::borrow::Cow::Owned(_) => assert!(
+        false,
+        "It shouldn't allocate new string. There is nothing to escape."
+      ),
     }
   }
 }

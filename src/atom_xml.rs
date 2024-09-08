@@ -1,5 +1,5 @@
 use crate::attributes::{AttributeMap, AttributeName};
-use crate::common::{escape::EscapeNotation, DateTime, LinkRelation, XmlText};
+use crate::common::{DateTime, LinkRelation, XmlText};
 use crate::serializer::{ElementSerializer, Serialize};
 
 /// Generic helper node to simplify some property serializations
@@ -176,7 +176,7 @@ macro_rules! impl_serialize_for_text_node {
         };
 
         let element = serializer.serialize_element($name, self.namespace, Some(&attributes))?;
-        element.serialize_str(&self.value.as_normalized_str(EscapeNotation::default()))?;
+        element.serialize_str(&self.value.as_normalized_str())?;
 
         Ok(())
       }
