@@ -173,8 +173,6 @@ impl AttributeName {
 
 // AttributeValue impls
 
-// TODO: encodings!
-
 impl<T> From<T> for AttributeValue
 where
   T: Borrow<str>,

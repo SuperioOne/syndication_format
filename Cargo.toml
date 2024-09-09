@@ -3,11 +3,14 @@ name = "atom_syndication_format"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+avx512 = []
+
 [dependencies]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-
 
 [[bench]]
 name = "escape_benchmark"

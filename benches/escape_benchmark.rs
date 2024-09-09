@@ -1,4 +1,4 @@
-use atom_syndication_format::common::escape::escape_str;
+use atom_syndication_format::escape_xml;
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
@@ -21,15 +21,15 @@ static INPUT_NO_ESCAPE : &'static str = "Lorem ipsum dolor sit amet, consectetur
 
 fn criterion_benchmark(c: &mut Criterion) {
   c.bench_function("escape short text", |b| {
-    b.iter(|| escape_str(black_box(&INPUT_SHORT_TEXT)))
+    b.iter(|| escape_xml!(black_box(&INPUT_SHORT_TEXT)))
   });
 
   c.bench_function("escape long text", |b| {
-    b.iter(|| escape_str(black_box(&INPUT_LONG_TEXT)))
+    b.iter(|| escape_xml!(black_box(&INPUT_LONG_TEXT)))
   });
 
   c.bench_function("non-escape text", |b| {
-    b.iter(|| escape_str(black_box(&INPUT_NO_ESCAPE)))
+    b.iter(|| escape_xml!(black_box(&INPUT_NO_ESCAPE)))
   });
 }
 

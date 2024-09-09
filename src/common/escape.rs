@@ -1,7 +1,10 @@
+use crate::utils::byte_search::{BytePosition, ByteSearch};
 use std::borrow::Cow;
 
-static EMPTY: &'static str = "";
+pub static XML_ESCAPE_PATTERNS: &'static [u8; 5] = &[b'<', b'>', b'&', b'\'', b'"'];
+pub static XML_ATTR_ESCAPE_PATTERNS: &'static [u8; 4] = &[b'<', b'>', b'&', b'"'];
 
+static EMPTY: &'static str = "";
 static ESCAPE_LOOKUP_TABLE: &'static [&'static str; 256] = &[
   EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
   EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
@@ -26,49 +29,66 @@ static ESCAPE_LOOKUP_TABLE: &'static [&'static str; 256] = &[
 
 #[inline]
 fn get_escaped(value: u8) -> &'static str {
-  *ESCAPE_LOOKUP_TABLE.get(value as usize).unwrap()
+  unsafe { *ESCAPE_LOOKUP_TABLE.get_unchecked(value as usize) }
 }
 
-pub fn escape_str<'a>(text: &'a str) -> Cow<'a, str> {
-  for (idx, byte) in text.as_bytes().iter().enumerate() {
-    if get_escaped(*byte) != EMPTY {
-      let mut escaped_text = String::with_capacity(text.len());
-      escaped_text.push_str(&text[..idx]);
-
-      return Cow::Owned(escape_string(&text[idx..], escaped_text));
-    }
+pub fn escape<'a>(input: &'a str, byte_patterns: &'a [u8]) -> Cow<'a, str> {
+  if input.is_empty() {
+    return Cow::Borrowed(input);
   }
 
-  Cow::Borrowed(text)
-}
+  let mut byte_search = input.search_bytes(byte_patterns);
 
-#[inline]
-fn escape_string<'a>(src: &'a str, mut dest: String) -> String {
-  let mut last = 0;
+  if let Some(BytePosition { index, value }) = byte_search.next() {
+    let mut escaped_input = String::with_capacity(input.len());
 
-  for (idx, byte) in src.as_bytes().iter().enumerate() {
-    let escaped = get_escaped(*byte);
+    if index != 0 {
+      escaped_input.push_str(&input[..index]);
+    }
 
-    if escaped != EMPTY {
-      if last != idx {
-        dest.push_str(&src[last..idx]);
+    let escaped = get_escaped(value);
+    escaped_input.push_str(escaped);
+
+    let mut head_pos = index + 1;
+
+    for BytePosition { index, value } in byte_search {
+      let escaped = get_escaped(value);
+
+      if head_pos != index {
+        escaped_input.push_str(&input[head_pos..index]);
       }
 
-      dest.push_str(escaped);
-      last = idx + 1;
+      escaped_input.push_str(escaped);
+      head_pos = index + 1;
     }
-  }
 
-  if last < (src.len() - 1) {
-    dest.push_str(&src[last..]);
-  }
+    if head_pos < (input.len() - 1) {
+      escaped_input.push_str(&input[head_pos..]);
+    }
 
-  dest
+    Cow::Owned(escaped_input)
+  } else {
+    Cow::Borrowed(input)
+  }
+}
+
+#[macro_export]
+macro_rules! escape_xml {
+  ($input:expr) => {
+    $crate::common::escape::escape($input, $crate::common::escape::XML_ESCAPE_PATTERNS)
+  };
+}
+
+#[macro_export]
+macro_rules! escape_xml_attr {
+  ($input:expr) => {
+    $crate::common::escape::escape($input, $crate::common::escape::XML_ATTR_ESCAPE_PATTERNS)
+  };
 }
 
 #[cfg(test)]
 mod test {
-  use super::{escape_str, get_escaped};
+  use super::get_escaped;
 
   #[test]
   fn escape_lookups() {
@@ -88,7 +108,7 @@ mod test {
   #[test]
   fn escape_special_chars() {
     let input = "<div> '\"COOL&CREATE\"' </div>";
-    let escaped = escape_str(&input);
+    let escaped = escape_xml!(&input);
 
     match escaped {
       std::borrow::Cow::Borrowed(_) => {
@@ -105,7 +125,7 @@ mod test {
   #[test]
   fn escape_once() {
     let start_input = "&Test";
-    let escaped = escape_str(&start_input);
+    let escaped = escape_xml!(&start_input);
 
     match escaped {
       std::borrow::Cow::Borrowed(_) => {
@@ -115,7 +135,7 @@ mod test {
     }
 
     let end_input = "Test&";
-    let escaped = escape_str(&end_input);
+    let escaped = escape_xml!(&end_input);
     match escaped {
       std::borrow::Cow::Borrowed(_) => {
         assert!(false, "It shouldn't returned borrowed text back.")
@@ -127,7 +147,7 @@ mod test {
   #[test]
   fn escape_non_special_chars() {
     let input = "Cool and Create";
-    let escaped = escape_str(&input);
+    let escaped = escape_xml!(&input);
 
     match escaped {
       std::borrow::Cow::Borrowed(escaped_text) => {

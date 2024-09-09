@@ -2,7 +2,7 @@ use core::fmt::Display;
 use core::time;
 use std::borrow::Cow;
 
-use self::escape::escape_str;
+use crate::escape_xml;
 
 pub mod escape;
 
@@ -55,12 +55,11 @@ impl LinkRelation {
 }
 
 impl XmlText<'_> {
-  pub fn as_normalized_str(&self) -> Cow<'_, str> {
-    // TODO: escape all special characters here
+  pub fn to_xml_str(&self) -> Cow<'_, str> {
     match self {
-      XmlText::Html(value) => escape_str(value),
+      XmlText::Html(value) => escape_xml!(value),
       XmlText::Xhtml(value) => Cow::Borrowed(value),
-      XmlText::PlainText(value) => escape_str(value),
+      XmlText::PlainText(value) => escape_xml!(value),
     }
   }
 }

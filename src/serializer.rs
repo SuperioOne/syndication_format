@@ -4,6 +4,7 @@ use core::fmt::Arguments;
 
 use crate::attributes::AttributeMap;
 use crate::error::XmlSerializeError;
+use crate::escape_xml_attr;
 
 pub trait Write {
   fn write(&mut self, data: &str) -> Result<()>;
@@ -168,9 +169,11 @@ where
 
     if let Some(attributes) = attributes {
       for attr in attributes {
-        self
-          .writer
-          .write_fmt(format_args!(" {}=\"{}\"", &attr.name, &attr.value))?;
+        self.writer.write_fmt(format_args!(
+          " {}=\"{}\"",
+          &attr.name,
+          escape_xml_attr!(&attr.value)
+        ))?;
       }
     }
 

@@ -1,5 +1,6 @@
 use crate::attributes::{AttributeMap, AttributeName};
 use crate::common::{DateTime, LinkRelation, XmlText};
+use crate::escape_xml;
 use crate::serializer::{ElementSerializer, Serialize};
 
 /// Generic helper node to simplify some property serializations
@@ -176,7 +177,7 @@ macro_rules! impl_serialize_for_text_node {
         };
 
         let element = serializer.serialize_element($name, self.namespace, Some(&attributes))?;
-        element.serialize_str(&self.value.as_normalized_str())?;
+        element.serialize_str(&self.value.to_xml_str())?;
 
         Ok(())
       }
@@ -198,7 +199,7 @@ impl Serialize for ElementNode<'_> {
     match self.value {
       Some(value) => {
         let element = serializer.serialize_element(self.name, self.namespace, self.attributes)?;
-        element.serialize_str(value)?;
+        element.serialize_str(&escape_xml!(value))?;
       }
       None => serializer.serialize_empty_element(self.name, self.namespace, self.attributes)?,
     }
@@ -326,10 +327,9 @@ impl Serialize for Generator<'_> {
     set_from_option!(attributes, "version", self.version);
     set_from_option!(attributes, "uri", self.uri);
 
-    let generator_element =
-      serializer.serialize_element("generator", self.namespace, Some(&attributes))?;
+    let generator = serializer.serialize_element("generator", self.namespace, Some(&attributes))?;
 
-    generator_element.serialize_str(self.value)?;
+    generator.serialize_str(&escape_xml!(self.value))?;
 
     Ok(())
   }
@@ -340,9 +340,8 @@ impl Serialize for Icon<'_> {
   where
     S: crate::serializer::Serializer,
   {
-    let icon_element =
-      serializer.serialize_element("icon", self.namespace, Some(&self.attributes))?;
-    icon_element.serialize_str(self.value)?;
+    let icon = serializer.serialize_element("icon", self.namespace, Some(&self.attributes))?;
+    icon.serialize_str(&escape_xml!(self.value))?;
     Ok(())
   }
 }
@@ -352,9 +351,8 @@ impl Serialize for Logo<'_> {
   where
     S: crate::serializer::Serializer,
   {
-    let icon_element =
-      serializer.serialize_element("logo", self.namespace, Some(&self.attributes))?;
-    icon_element.serialize_str(self.value)?;
+    let logo = serializer.serialize_element("logo", self.namespace, Some(&self.attributes))?;
+    logo.serialize_str(&escape_xml!(self.value))?;
     Ok(())
   }
 }
@@ -384,8 +382,8 @@ impl Serialize for Id<'_> {
   where
     S: crate::serializer::Serializer,
   {
-    let id_element = serializer.serialize_element("id", self.namespace, Some(&self.attributes))?;
-    id_element.serialize_str(self.value)?;
+    let id = serializer.serialize_element("id", self.namespace, Some(&self.attributes))?;
+    id.serialize_str(&escape_xml!(self.value))?;
     Ok(())
   }
 }
