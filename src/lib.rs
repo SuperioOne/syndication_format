@@ -4,5 +4,6 @@ pub mod atom_xml;
 pub mod attributes;
 pub mod common;
 pub mod error;
+pub mod escape;
 pub mod serializer;
 mod utils;

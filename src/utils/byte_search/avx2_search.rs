@@ -13,7 +13,6 @@ pub struct Avx2ByteSearchIter<'a> {
 impl<'a> Avx2ByteSearchIter<'a> {
   pub fn new(input: &'a [u8], search_bytes: &'a [u8]) -> Self {
     let input = if input.len() < 64 {
-      // WARN: padding short inputs to 64 bytes is kinda `meh`.
       let mut padded = vec![0u8; 64];
 
       unsafe {

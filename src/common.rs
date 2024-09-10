@@ -4,8 +4,6 @@ use std::borrow::Cow;
 
 use crate::escape_xml;
 
-pub mod escape;
-
 pub type Uri = String;
 
 pub enum XmlText<'a> {

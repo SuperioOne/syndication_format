@@ -2,9 +2,10 @@ use atom_syndication_format::escape_xml;
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
-static INPUT_SHORT_TEXT: &'static str = "<div></div>";
+static INPUT_SHORT: &'static str = "<div></div>";
+static INPUT_SHORT_NO_ESCAPE: &'static str = "Hello";
 
-static INPUT_LONG_TEXT: &'static str = r#"
+static INPUT_LONG: &'static str = r#"
 <pre><div class="buttons"><button class="fa fa-copy clip-button" title="Copy to clipboard" aria-label="Copy to clipboard">
 <i class="tooltiptext"></i></button></div><code class="language-rust ignore hljs">&amp;<span class="hljs-built_in">i32</span>
 <span class="hljs-comment">// a reference</span> &amp;<span class="hljs-symbol">'a</span> <span class="hljs-built_in">i32</span>
@@ -21,15 +22,19 @@ static INPUT_NO_ESCAPE : &'static str = "Lorem ipsum dolor sit amet, consectetur
 
 fn criterion_benchmark(c: &mut Criterion) {
   c.bench_function("escape short text", |b| {
-    b.iter(|| escape_xml!(black_box(&INPUT_SHORT_TEXT)))
+    b.iter(|| escape_xml!(black_box(&INPUT_SHORT)))
   });
 
   c.bench_function("escape long text", |b| {
-    b.iter(|| escape_xml!(black_box(&INPUT_LONG_TEXT)))
+    b.iter(|| escape_xml!(black_box(&INPUT_LONG)))
   });
 
   c.bench_function("non-escape text", |b| {
     b.iter(|| escape_xml!(black_box(&INPUT_NO_ESCAPE)))
+  });
+
+  c.bench_function("non-escape short text", |b| {
+    b.iter(|| escape_xml!(black_box(&INPUT_SHORT_NO_ESCAPE)))
   });
 }
 
