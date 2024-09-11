@@ -4,6 +4,7 @@ use core::fmt::Arguments;
 
 use crate::attributes::AttributeMap;
 use crate::error::XmlSerializeError;
+use crate::escape::{escape_writer, XML_ESCAPE_PATTERNS};
 use crate::escape_xml_attr;
 
 pub trait Write {
@@ -64,6 +65,8 @@ pub trait Serializer: Sized {
   /// Serializes `str` reference as element's value.
   fn serialize_str(self, value: &str) -> Result<()>;
 
+  fn serialize_escaped_str(self, value: &str) -> Result<()>;
+
   fn serialize<V>(self, value: V) -> Result<()>
   where
     V: Serialize;
@@ -123,6 +126,8 @@ pub trait ElementSerializer {
     V: Serialize;
 
   fn serialize_str(self, value: &str) -> Result<()>;
+
+  fn serialize_escaped_str(self, value: &str) -> Result<()>;
 
   fn end(self) -> Result<()>;
 }
@@ -250,6 +255,11 @@ where
 
     Ok(())
   }
+
+  fn serialize_escaped_str(self, value: &str) -> Result<()> {
+    escape_writer(value, self.writer, XML_ESCAPE_PATTERNS)?;
+    Ok(())
+  }
 }
 
 impl<'a, W> ElementSerializer for XmlElementSerializer<'a, W>
@@ -276,6 +286,12 @@ where
     self
       .inner
       .close_element(&self.name, self.namespace.as_deref())
+  }
+
+  fn serialize_escaped_str(self, value: &str) -> Result<()> {
+    escape_writer(value, self.inner.writer, XML_ESCAPE_PATTERNS)?;
+    self.inner.writer.write_line("")?;
+    self.end()
   }
 }
 
@@ -341,7 +357,7 @@ mod test {
       S: Serializer,
     {
       let title_element = serializer.serialize_element("h1", Some("xhtml"), None)?;
-      title_element.serialize_str(&self.text)?;
+      title_element.serialize_escaped_str(&self.text)?;
 
       Ok(())
     }
