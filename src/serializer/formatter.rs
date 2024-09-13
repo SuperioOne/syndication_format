@@ -1,3 +1,5 @@
+use crate::error::XmlSerializeError;
+
 use super::Write;
 
 pub struct DefaultWriter<'a, W>
@@ -36,19 +38,22 @@ where
   W: std::io::Write,
 {
   #[inline]
-  fn write(&mut self, data: &str) -> super::Result<()> {
+  fn write(&mut self, data: &str) -> core::result::Result<(), XmlSerializeError> {
     self.inner_writer.write_all(data.as_bytes())?;
     Ok(())
   }
 
   #[inline]
-  fn write_line(&mut self, data: &str) -> super::Result<()> {
+  fn write_line(&mut self, data: &str) -> core::result::Result<(), XmlSerializeError> {
     self.inner_writer.write_fmt(format_args!("{}", data))?;
     Ok(())
   }
 
   #[inline]
-  fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> super::Result<()> {
+  fn write_fmt(
+    &mut self,
+    fmt: core::fmt::Arguments,
+  ) -> core::result::Result<(), XmlSerializeError> {
     self.inner_writer.write_fmt(fmt)?;
     Ok(())
   }
@@ -84,7 +89,7 @@ where
   W: std::io::Write,
 {
   #[inline]
-  fn write(&mut self, data: &str) -> super::Result<()> {
+  fn write(&mut self, data: &str) -> core::result::Result<(), XmlSerializeError> {
     if self.is_next_line {
       self.write_indentation()?;
     }
@@ -95,7 +100,7 @@ where
   }
 
   #[inline]
-  fn write_line(&mut self, data: &str) -> super::Result<()> {
+  fn write_line(&mut self, data: &str) -> core::result::Result<(), XmlSerializeError> {
     if self.is_next_line {
       self.write_indentation()?;
     }
@@ -106,7 +111,10 @@ where
   }
 
   #[inline]
-  fn write_fmt(&mut self, fmt: core::fmt::Arguments) -> super::Result<()> {
+  fn write_fmt(
+    &mut self,
+    fmt: core::fmt::Arguments,
+  ) -> core::result::Result<(), XmlSerializeError> {
     if self.is_next_line {
       self.write_indentation()?;
     }
@@ -152,7 +160,7 @@ where
   }
 
   #[inline]
-  fn write_indentation(&mut self) -> super::Result<()> {
+  fn write_indentation(&mut self) -> core::result::Result<(), XmlSerializeError> {
     let space_size = self.tab_spaces.saturating_mul(self.level);
     let indent = vec![get_character_byte(self.space_style); space_size];
 

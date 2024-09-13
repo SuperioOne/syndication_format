@@ -2,15 +2,18 @@
 name = "atom_syndication_format"
 version = "0.1.0"
 edition = "2021"
+homepage = "https://github.com/SuperioOne/atom_syndication_format"
+repository = "https://github.com/SuperioOne/atom_syndication_format"
 
 [features]
-default = []
+default = ["std"]
 avx512 = []
+std = []
 
 [dependencies]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.5" }
 
 [[bench]]
 name = "escape_benchmark"

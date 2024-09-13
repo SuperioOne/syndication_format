@@ -44,12 +44,12 @@ impl<'a> Avx512ByteSearchIter<'a> {
     while offset < block_len {
       let bitmap = unsafe {
         let ptr = addr.byte_add(offset).cast();
-        let block = std::arch::x86_64::_mm512_loadu_si512(ptr);
+        let block = core::arch::x86_64::_mm512_loadu_si512(ptr);
         let mut cmp_block: u64 = 0;
 
         for search_byte in self.search_bytes {
-          let mask = std::arch::x86_64::_mm512_set1_epi8((*search_byte) as i8);
-          let cmp_result = std::arch::x86_64::_mm512_cmpeq_epi8_mask(block, mask);
+          let mask = core::arch::x86_64::_mm512_set1_epi8((*search_byte) as i8);
+          let cmp_result = core::arch::x86_64::_mm512_cmpeq_epi8_mask(block, mask);
 
           cmp_block |= cmp_result;
         }
@@ -72,13 +72,13 @@ impl<'a> Avx512ByteSearchIter<'a> {
 
       let bitmap = unsafe {
         let ptr = addr.byte_add(offset).cast();
-        let block = std::arch::x86_64::_mm512_loadu_si512(ptr);
+        let block = core::arch::x86_64::_mm512_loadu_si512(ptr);
 
         let mut cmp_block = 0;
 
         for search_byte in self.search_bytes {
-          let mask = std::arch::x86_64::_mm512_set1_epi8((*search_byte) as i8);
-          let cmp_result = std::arch::x86_64::_mm512_cmpeq_epi8_mask(block, mask);
+          let mask = core::arch::x86_64::_mm512_set1_epi8((*search_byte) as i8);
+          let cmp_result = core::arch::x86_64::_mm512_cmpeq_epi8_mask(block, mask);
 
           cmp_block |= cmp_result;
         }

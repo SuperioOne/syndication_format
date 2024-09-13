@@ -46,22 +46,22 @@ impl<'a> Avx2ByteSearchIter<'a> {
       let bitmap = unsafe {
         let ptr0 = addr.byte_add(offset).cast();
         let ptr1 = addr.byte_add(offset + 32).cast();
-        let block0 = std::arch::x86_64::_mm256_loadu_si256(ptr0);
-        let block1 = std::arch::x86_64::_mm256_loadu_si256(ptr1);
-        let mut cmp_block0 = std::arch::x86_64::_mm256_setzero_si256();
-        let mut cmp_block1 = std::arch::x86_64::_mm256_setzero_si256();
+        let block0 = core::arch::x86_64::_mm256_loadu_si256(ptr0);
+        let block1 = core::arch::x86_64::_mm256_loadu_si256(ptr1);
+        let mut cmp_block0 = core::arch::x86_64::_mm256_setzero_si256();
+        let mut cmp_block1 = core::arch::x86_64::_mm256_setzero_si256();
 
         for search_byte in self.search_bytes {
-          let mask = std::arch::x86_64::_mm256_set1_epi8((*search_byte) as i8);
-          let cmp0 = std::arch::x86_64::_mm256_cmpeq_epi8(block0, mask);
-          let cmp1 = std::arch::x86_64::_mm256_cmpeq_epi8(block1, mask);
+          let mask = core::arch::x86_64::_mm256_set1_epi8((*search_byte) as i8);
+          let cmp0 = core::arch::x86_64::_mm256_cmpeq_epi8(block0, mask);
+          let cmp1 = core::arch::x86_64::_mm256_cmpeq_epi8(block1, mask);
 
-          cmp_block0 = std::arch::x86_64::_mm256_xor_si256(cmp_block0, cmp0);
-          cmp_block1 = std::arch::x86_64::_mm256_xor_si256(cmp_block1, cmp1);
+          cmp_block0 = core::arch::x86_64::_mm256_xor_si256(cmp_block0, cmp0);
+          cmp_block1 = core::arch::x86_64::_mm256_xor_si256(cmp_block1, cmp1);
         }
 
-        let pos_l = std::arch::x86_64::_mm256_movemask_epi8(cmp_block0) as u32;
-        let pos_h = std::arch::x86_64::_mm256_movemask_epi8(cmp_block1) as u32;
+        let pos_l = core::arch::x86_64::_mm256_movemask_epi8(cmp_block0) as u32;
+        let pos_h = core::arch::x86_64::_mm256_movemask_epi8(cmp_block1) as u32;
         ((pos_h as u64) << 32) | pos_l as u64
       };
 
@@ -81,22 +81,22 @@ impl<'a> Avx2ByteSearchIter<'a> {
       let bitmap = unsafe {
         let ptr0 = addr.byte_add(offset).cast();
         let ptr1 = addr.byte_add(offset + 32).cast();
-        let block0 = std::arch::x86_64::_mm256_loadu_si256(ptr0);
-        let block1 = std::arch::x86_64::_mm256_loadu_si256(ptr1);
-        let mut cmp_block0 = std::arch::x86_64::_mm256_setzero_si256();
-        let mut cmp_block1 = std::arch::x86_64::_mm256_setzero_si256();
+        let block0 = core::arch::x86_64::_mm256_loadu_si256(ptr0);
+        let block1 = core::arch::x86_64::_mm256_loadu_si256(ptr1);
+        let mut cmp_block0 = core::arch::x86_64::_mm256_setzero_si256();
+        let mut cmp_block1 = core::arch::x86_64::_mm256_setzero_si256();
 
         for search_byte in self.search_bytes {
-          let mask = std::arch::x86_64::_mm256_set1_epi8((*search_byte) as i8);
-          let cmp0 = std::arch::x86_64::_mm256_cmpeq_epi8(block0, mask);
-          let cmp1 = std::arch::x86_64::_mm256_cmpeq_epi8(block1, mask);
+          let mask = core::arch::x86_64::_mm256_set1_epi8((*search_byte) as i8);
+          let cmp0 = core::arch::x86_64::_mm256_cmpeq_epi8(block0, mask);
+          let cmp1 = core::arch::x86_64::_mm256_cmpeq_epi8(block1, mask);
 
-          cmp_block0 = std::arch::x86_64::_mm256_xor_si256(cmp_block0, cmp0);
-          cmp_block1 = std::arch::x86_64::_mm256_xor_si256(cmp_block1, cmp1);
+          cmp_block0 = core::arch::x86_64::_mm256_xor_si256(cmp_block0, cmp0);
+          cmp_block1 = core::arch::x86_64::_mm256_xor_si256(cmp_block1, cmp1);
         }
 
-        let pos_l = std::arch::x86_64::_mm256_movemask_epi8(cmp_block0) as u32;
-        let pos_h = std::arch::x86_64::_mm256_movemask_epi8(cmp_block1) as u32;
+        let pos_l = core::arch::x86_64::_mm256_movemask_epi8(cmp_block0) as u32;
+        let pos_h = core::arch::x86_64::_mm256_movemask_epi8(cmp_block1) as u32;
         ((pos_h as u64) << 32) | pos_l as u64
       };
 

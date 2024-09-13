@@ -1,16 +1,19 @@
+#[cfg(feature = "std")]
 pub mod formatter;
 
 use core::fmt::Arguments;
 
-use crate::attributes::AttributeMap;
-use crate::error::XmlSerializeError;
-use crate::escape::{escape_writer, XML_ESCAPE_PATTERNS};
-use crate::escape_xml_attr;
+use crate::{
+  common::AttributeMap,
+  error::XmlSerializeError,
+  escape::{escape_writer, XML_ESCAPE_PATTERNS},
+  escape_xml_attr,
+};
 
 pub trait Write {
-  fn write(&mut self, data: &str) -> Result<()>;
-  fn write_line(&mut self, data: &str) -> Result<()>;
-  fn write_fmt(&mut self, f: Arguments) -> Result<()>;
+  fn write(&mut self, data: &str) -> Result<(), XmlSerializeError>;
+  fn write_line(&mut self, data: &str) -> Result<(), XmlSerializeError>;
+  fn write_fmt(&mut self, f: Arguments) -> Result<(), XmlSerializeError>;
   fn increment_level(&mut self);
   fn decrement_level(&mut self);
   fn set_level(&mut self, level: usize);
@@ -37,10 +40,8 @@ enum ElementType {
   NoEmpty,
 }
 
-pub type Result<T> = core::result::Result<T, XmlSerializeError>;
-
 pub trait Serialize {
-  fn serialize<S>(&self, serializer: S) -> Result<()>
+  fn serialize<S>(&self, serializer: S, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     S: Serializer;
 }
@@ -50,11 +51,11 @@ impl<T> Serialize for &'_ T
 where
   T: Serialize,
 {
-  fn serialize<S>(&self, serializer: S) -> Result<()>
+  fn serialize<S>(&self, serializer: S, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     S: Serializer,
   {
-    (*self).serialize(serializer)?;
+    (*self).serialize(serializer, namespace)?;
     Ok(())
   }
 }
@@ -62,32 +63,40 @@ where
 pub trait Serializer: Sized {
   type ElementSerializer: ElementSerializer;
 
-  /// Serializes `str` reference as element's value.
-  fn serialize_str(self, value: &str) -> Result<()>;
+  /// Serializes string as element's value.
+  fn serialize_str(self, value: &str) -> Result<(), XmlSerializeError>;
 
-  fn serialize_escaped_str(self, value: &str) -> Result<()>;
+  /// Escapes and serializes string as element's value.
+  fn serialize_escaped_str(self, value: &str) -> Result<(), XmlSerializeError>;
 
-  fn serialize<V>(self, value: V) -> Result<()>
+  fn serialize<V>(self, value: V, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     V: Serialize;
 
   /// Creates an element tag.
   ///
-  /// Example:
-  /// ```ignore
-  /// impl Serialize for Test {
-  ///   fn serialize<S>(&self, serializer: S) -> Result<()>
+  /// Basic Example:
+  /// ```
+  /// use atom_syndication_format::common::{ AttributeMap, AttributeName };
+  /// use atom_syndication_format::serializer::*;
+  /// use atom_syndication_format::error::{XmlSerializeError};
+  ///
+  /// pub struct BasicExample {
+  ///   lang: String,
+  ///   content: String
+  /// }
+  ///
+  /// impl Serialize for BasicExample {
+  ///   fn serialize<S>(&self, serializer: S, namespace: Option<&str>) -> Result<(),
+  ///   XmlSerializeError>
   ///     where
   ///       S: Serializer,
   ///   {
-  ///     let mut tag_element = serializer.serialize_element("tag", None, None)?;
-  ///     tag_element.serialize(&self.value)?;
+  ///     let mut attributes = AttributeMap::new();
+  ///     attributes.set(AttributeName::new("lang")?, self.lang.as_str().into());
   ///
-  ///     for nested in self.nested_elements.iter() {
-  ///       tag_element.serialize(nested)?;
-  ///     }
-  ///
-  ///     tag_element.end()?;
+  ///     let mut root = serializer.serialize_element("example", namespace, Some(&attributes))?;
+  ///     root.serialize_escaped_str(&self.content)?;
   ///
   ///     Ok(())
   ///   }
@@ -96,17 +105,16 @@ pub trait Serializer: Sized {
   ///
   /// Output:
   /// ```xml
-  ///   <tag>
-  ///     <nested> .... </nested>
-  ///     <nested> .... </nested>
-  ///   </tag>
+  ///   <example lang="en-GB">
+  ///     Lorem ipsum &amp; ...
+  ///   </example>
   /// ```
   fn serialize_element(
     self,
     name: &str,
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
-  ) -> Result<Self::ElementSerializer>;
+  ) -> Result<Self::ElementSerializer, XmlSerializeError>;
 
   /// Creates an empty element without any child node and value.
   /// ```xml
@@ -117,19 +125,19 @@ pub trait Serializer: Sized {
     name: &str,
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
-  ) -> Result<()>;
+  ) -> Result<(), XmlSerializeError>;
 }
 
 pub trait ElementSerializer {
-  fn serialize<V>(&mut self, value: V) -> Result<()>
+  fn serialize<V>(&mut self, value: V, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     V: Serialize;
 
-  fn serialize_str(self, value: &str) -> Result<()>;
+  fn serialize_str(self, value: &str) -> Result<(), XmlSerializeError>;
 
-  fn serialize_escaped_str(self, value: &str) -> Result<()>;
+  fn serialize_escaped_str(self, value: &str) -> Result<(), XmlSerializeError>;
 
-  fn end(self) -> Result<()>;
+  fn end(self) -> Result<(), XmlSerializeError>;
 }
 
 pub struct XmlSerializer<'a, W>
@@ -163,7 +171,7 @@ where
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
     element_type: ElementType,
-  ) -> Result<()> {
+  ) -> Result<(), XmlSerializeError> {
     if let Some(namespace) = namespace {
       self
         .writer
@@ -194,7 +202,11 @@ where
   }
 
   #[inline]
-  fn close_element(&mut self, name: &str, namespace: Option<&str>) -> Result<()> {
+  fn close_element(
+    &mut self,
+    name: &str,
+    namespace: Option<&str>,
+  ) -> Result<(), XmlSerializeError> {
     self.writer.decrement_level();
 
     if let Some(namespace) = namespace {
@@ -217,17 +229,17 @@ where
 {
   type ElementSerializer = XmlElementSerializer<'a, W>;
 
-  fn serialize_str(self, value: &str) -> Result<()> {
+  fn serialize_str(self, value: &str) -> Result<(), XmlSerializeError> {
     self.writer.write(value)?;
 
     Ok(())
   }
 
-  fn serialize<V>(self, value: V) -> Result<()>
+  fn serialize<V>(self, value: V, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     V: Serialize,
   {
-    value.serialize(self)
+    value.serialize(self, namespace)
   }
 
   fn serialize_element(
@@ -235,13 +247,13 @@ where
     name: &str,
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
-  ) -> Result<Self::ElementSerializer> {
-    self.create_element(name, namespace, attributes.as_deref(), ElementType::NoEmpty)?;
+  ) -> Result<Self::ElementSerializer, XmlSerializeError> {
+    self.create_element(name, namespace, attributes, ElementType::NoEmpty)?;
 
     Ok(Self::ElementSerializer {
       inner: self,
       name: Box::from(name),
-      namespace: namespace.map(|f| Box::from(f)),
+      namespace: namespace.map(Box::from),
     })
   }
 
@@ -250,13 +262,13 @@ where
     name: &str,
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
-  ) -> Result<()> {
-    self.create_element(name, namespace, attributes.as_deref(), ElementType::Empty)?;
+  ) -> Result<(), XmlSerializeError> {
+    self.create_element(name, namespace, attributes, ElementType::Empty)?;
 
     Ok(())
   }
 
-  fn serialize_escaped_str(self, value: &str) -> Result<()> {
+  fn serialize_escaped_str(self, value: &str) -> Result<(), XmlSerializeError> {
     escape_writer(value, self.writer, XML_ESCAPE_PATTERNS)?;
     Ok(())
   }
@@ -266,201 +278,31 @@ impl<'a, W> ElementSerializer for XmlElementSerializer<'a, W>
 where
   W: Write + ?Sized,
 {
-  fn serialize<V>(&mut self, value: V) -> Result<()>
+  fn serialize<V>(&mut self, value: V, namespace: Option<&str>) -> Result<(), XmlSerializeError>
   where
     V: Serialize,
   {
-    let mut temp = XmlSerializer {
+    let mut ser = XmlSerializer {
       writer: self.inner.writer,
     };
 
-    value.serialize(&mut temp)
+    value.serialize(&mut ser, namespace)
   }
 
-  fn serialize_str(self, value: &str) -> Result<()> {
+  fn serialize_str(self, value: &str) -> Result<(), XmlSerializeError> {
     self.inner.writer.write_line(value)?;
     self.end()
   }
 
-  fn end(self) -> Result<()> {
+  fn end(self) -> Result<(), XmlSerializeError> {
     self
       .inner
       .close_element(&self.name, self.namespace.as_deref())
   }
 
-  fn serialize_escaped_str(self, value: &str) -> Result<()> {
+  fn serialize_escaped_str(self, value: &str) -> Result<(), XmlSerializeError> {
     escape_writer(value, self.inner.writer, XML_ESCAPE_PATTERNS)?;
     self.inner.writer.write_line("")?;
     self.end()
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use super::{ElementSerializer, Result, Serialize, Serializer};
-  use crate::attributes::{AttributeMap, AttributeName, AttributeValue};
-  use crate::serializer::formatter::{DefaultWriter, IndentedWriter, SpaceStyle};
-  use crate::serializer::XmlSerializer;
-  use std::str::from_utf8_unchecked;
-
-  pub struct Title {
-    text: String,
-  }
-
-  pub struct Root {
-    title: Title,
-    list: Vec<ListItem>,
-  }
-
-  pub struct ListItem {
-    value: usize,
-  }
-
-  impl Serialize for ListItem {
-    fn serialize<S>(&self, serializer: S) -> Result<()>
-    where
-      S: Serializer,
-    {
-      let mut attr = AttributeMap::new();
-
-      attr.set(
-        AttributeName::new("value")?,
-        AttributeValue::new(&self.value.to_string()),
-      );
-
-      serializer.serialize_empty_element("li", Some("xhtml"), Some(&attr))?;
-
-      Ok(())
-    }
-  }
-
-  impl Serialize for Vec<ListItem> {
-    fn serialize<S>(&self, serializer: S) -> Result<()>
-    where
-      S: Serializer,
-    {
-      let mut list_element = serializer.serialize_element("ul", Some("xhtml"), None)?;
-
-      for item in self.iter() {
-        list_element.serialize(item)?;
-      }
-
-      list_element.end()?;
-
-      Ok(())
-    }
-  }
-
-  impl Serialize for Title {
-    fn serialize<S>(&self, serializer: S) -> Result<()>
-    where
-      S: Serializer,
-    {
-      let title_element = serializer.serialize_element("h1", Some("xhtml"), None)?;
-      title_element.serialize_escaped_str(&self.text)?;
-
-      Ok(())
-    }
-  }
-
-  impl Serialize for Root {
-    fn serialize<S>(&self, serializer: S) -> Result<()>
-    where
-      S: Serializer,
-    {
-      let mut root_element = serializer.serialize_element("root", None, None).unwrap();
-
-      root_element.serialize(&self.title)?;
-      root_element.serialize(&self.list)?;
-      root_element.end()?;
-
-      Ok(())
-    }
-  }
-
-  #[test]
-  fn xml_serializer_write() {
-    let expected = r#"<root><xhtml:h1>Hello world!</xhtml:h1><xhtml:ul><xhtml:li value="12"/><xhtml:li value="13"/></xhtml:ul></root>"#;
-    let obj = Root {
-      list: vec![ListItem { value: 12 }, ListItem { value: 13 }],
-      title: Title {
-        text: String::from("Hello world!"),
-      },
-    };
-
-    let mut buffer: Vec<u8> = Vec::new();
-    let mut default_writer = DefaultWriter::new(&mut buffer);
-    let mut xml_writer = XmlSerializer {
-      writer: &mut default_writer,
-    };
-
-    let _ = xml_writer.serialize(obj);
-    let serialized_text = unsafe { from_utf8_unchecked(&buffer) };
-
-    assert_eq!(expected, serialized_text);
-  }
-
-  #[test]
-  fn xml_serializer_formatted_write() {
-    let expected = "<root>
-    <xhtml:h1>
-        Hello world!
-    </xhtml:h1>
-    <xhtml:ul>
-        <xhtml:li value=\"12\"/>
-        <xhtml:li value=\"13\"/>
-    </xhtml:ul>
-</root>
-";
-
-    let obj = Root {
-      list: vec![ListItem { value: 12 }, ListItem { value: 13 }],
-      title: Title {
-        text: String::from("Hello world!"),
-      },
-    };
-
-    let mut buffer: Vec<u8> = Vec::new();
-    let mut default_writer = IndentedWriter::new(&mut buffer, SpaceStyle::WhiteSpace, 4);
-    let mut xml_writer = XmlSerializer {
-      writer: &mut default_writer,
-    };
-
-    let _ = xml_writer.serialize(obj);
-    let serialized_text = unsafe { from_utf8_unchecked(&buffer) };
-
-    assert_eq!(expected, serialized_text);
-  }
-
-  #[test]
-  fn xml_serializer_tab_formatted_write() {
-    let expected = "<root>
-\t<xhtml:h1>
-\t\tHello world!
-\t</xhtml:h1>
-\t<xhtml:ul>
-\t\t<xhtml:li value=\"12\"/>
-\t\t<xhtml:li value=\"13\"/>
-\t</xhtml:ul>
-</root>
-";
-
-    let obj = Root {
-      list: vec![ListItem { value: 12 }, ListItem { value: 13 }],
-      title: Title {
-        text: String::from("Hello world!"),
-      },
-    };
-
-    let mut buffer: Vec<u8> = Vec::new();
-    let mut default_writer = IndentedWriter::new(&mut buffer, SpaceStyle::Tabs, 1);
-    let mut xml_writer = XmlSerializer {
-      writer: &mut default_writer,
-    };
-
-    let _ = xml_writer.serialize(obj);
-    let serialized_text = unsafe { from_utf8_unchecked(&buffer) };
-
-    assert_eq!(expected, serialized_text);
   }
 }

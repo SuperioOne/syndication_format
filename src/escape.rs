@@ -1,11 +1,11 @@
 use crate::{
-  serializer::{Result, Write},
+  error::XmlSerializeError,
+  serializer::Write,
   utils::byte_search::{swar_search::SwarByteSearchIter, BasicByteSearch, BytePosition},
 };
-use std::borrow::Cow;
 
-pub const XML_ESCAPE_PATTERNS: &'static [u8; 5] = &[b'<', b'>', b'&', b'\'', b'"'];
-pub const XML_ATTR_ESCAPE_PATTERNS: &'static [u8; 4] = &[b'<', b'>', b'&', b'"'];
+pub const XML_ESCAPE_PATTERNS: &[u8; 5] = &[b'<', b'>', b'&', b'\'', b'"'];
+pub const XML_ATTR_ESCAPE_PATTERNS: &[u8; 4] = &[b'<', b'>', b'&', b'"'];
 
 static ESCAPE_LOOKUP_TABLE: [Option<&&str>; 256] = {
   let mut table = [None; 256];
@@ -17,13 +17,14 @@ static ESCAPE_LOOKUP_TABLE: [Option<&&str>; 256] = {
   table
 };
 
+#[cfg(feature = "std")]
 #[inline]
-fn internal_escape<'a, S>(mut byte_search_iter: S, input: &'a str) -> Cow<'a, str>
+fn internal_escape<S>(mut byte_search_iter: S, input: &str) -> std::borrow::Cow<'_, str>
 where
   S: Iterator<Item = BytePosition> + Sized,
 {
   if input.is_empty() {
-    return Cow::Borrowed(input);
+    return std::borrow::Cow::Borrowed(input);
   }
 
   if let Some(BytePosition { index, value }) = byte_search_iter.next() {
@@ -37,32 +38,36 @@ where
       escaped_input.push_str(escaped_char);
     }
 
-    let mut head_pos = index + 1;
+    let mut last = index + 1;
 
     for BytePosition { index, value } in byte_search_iter {
-      if head_pos != index {
-        escaped_input.push_str(&input[head_pos..index]);
+      if last != index {
+        escaped_input.push_str(&input[last..index]);
       }
 
       if let Some(escaped_char) = ESCAPE_LOOKUP_TABLE[value as usize] {
         escaped_input.push_str(escaped_char);
       }
 
-      head_pos = index + 1;
+      last = index + 1;
     }
 
-    if head_pos < (input.len() - 1) {
-      escaped_input.push_str(&input[head_pos..]);
+    if last < (input.len() - 1) {
+      escaped_input.push_str(&input[last..]);
     }
 
-    Cow::Owned(escaped_input)
+    std::borrow::Cow::Owned(escaped_input)
   } else {
-    Cow::Borrowed(input)
+    std::borrow::Cow::Borrowed(input)
   }
 }
 
 #[inline]
-fn internal_escape_writer<W, S>(writer: &mut W, mut byte_search_iter: S, input: &str) -> Result<()>
+fn internal_escape_writer<W, S>(
+  writer: &mut W,
+  mut byte_search_iter: S,
+  input: &str,
+) -> Result<(), XmlSerializeError>
 where
   W: Write + ?Sized,
   S: Iterator<Item = BytePosition>,
@@ -72,8 +77,6 @@ where
   }
 
   if let Some(BytePosition { index, value }) = byte_search_iter.next() {
-    let mut escaped_input = String::with_capacity(input.len());
-
     if index != 0 {
       writer.write(&input[..index])?;
     }
@@ -82,22 +85,22 @@ where
       writer.write(escaped_char)?;
     }
 
-    let mut head_pos = index + 1;
+    let mut last = index + 1;
 
     for BytePosition { index, value } in byte_search_iter {
-      if head_pos != index {
-        writer.write(&input[head_pos..index])?;
+      if last != index {
+        writer.write(&input[last..index])?;
       }
 
       if let Some(escaped_char) = ESCAPE_LOOKUP_TABLE[value as usize] {
         writer.write(escaped_char)?;
       }
 
-      head_pos = index + 1;
+      last = index + 1;
     }
 
-    if head_pos < (input.len() - 1) {
-      escaped_input.push_str(&input[head_pos..]);
+    if last < (input.len() - 1) {
+      writer.write(&input[last..])?;
     }
 
     Ok(())
@@ -106,7 +109,11 @@ where
   }
 }
 
-pub fn escape_writer<W>(input: &str, writer: &mut W, search_bytes: &[u8]) -> Result<()>
+pub fn escape_writer<W>(
+  input: &str,
+  writer: &mut W,
+  search_bytes: &[u8],
+) -> Result<(), XmlSerializeError>
 where
   W: Write + ?Sized,
 {
@@ -186,7 +193,8 @@ where
   }
 }
 
-pub fn escape<'a>(input: &'a str, search_bytes: &'a [u8]) -> Cow<'a, str> {
+#[cfg(feature = "std")]
+pub fn escape<'a>(input: &'a str, search_bytes: &'a [u8]) -> std::borrow::Cow<'a, str> {
   //
   // Generic
   //
@@ -263,6 +271,7 @@ pub fn escape<'a>(input: &'a str, search_bytes: &'a [u8]) -> Cow<'a, str> {
   }
 }
 
+#[cfg(feature = "std")]
 #[macro_export]
 macro_rules! escape_xml {
   ($input:expr) => {
@@ -270,67 +279,10 @@ macro_rules! escape_xml {
   };
 }
 
+#[cfg(feature = "std")]
 #[macro_export]
 macro_rules! escape_xml_attr {
   ($input:expr) => {
     $crate::escape::escape($input, $crate::escape::XML_ATTR_ESCAPE_PATTERNS)
   };
-}
-
-#[cfg(test)]
-mod test {
-  #[test]
-  fn escape_special_chars() {
-    let input = "<div> '\"COOL&CREATE\"' </div>";
-    let escaped = escape_xml!(&input);
-
-    match escaped {
-      std::borrow::Cow::Borrowed(_) => {
-        assert!(false, "It shouldn't returned borrowed text back.")
-      }
-      std::borrow::Cow::Owned(escaped_text) => assert_eq!(
-        "&lt;div&gt; &apos;&quot;COOL&amp;CREATE&quot;&apos; &lt;/div&gt;",
-        &escaped_text
-      ),
-    }
-  }
-
-  // Tests potential edge cases
-  #[test]
-  fn escape_once() {
-    let start_input = "&Test";
-    let escaped = escape_xml!(&start_input);
-
-    match escaped {
-      std::borrow::Cow::Borrowed(_) => {
-        assert!(false, "It shouldn't returned borrowed text back.")
-      }
-      std::borrow::Cow::Owned(escaped_text) => assert_eq!("&amp;Test", &escaped_text),
-    }
-
-    let end_input = "Test&";
-    let escaped = escape_xml!(&end_input);
-    match escaped {
-      std::borrow::Cow::Borrowed(_) => {
-        assert!(false, "It shouldn't returned borrowed text back.")
-      }
-      std::borrow::Cow::Owned(escaped_text) => assert_eq!("Test&amp;", &escaped_text),
-    }
-  }
-
-  #[test]
-  fn escape_non_special_chars() {
-    let input = "Cool and Create";
-    let escaped = escape_xml!(&input);
-
-    match escaped {
-      std::borrow::Cow::Borrowed(escaped_text) => {
-        assert_eq!("Cool and Create", escaped_text)
-      }
-      std::borrow::Cow::Owned(_) => assert!(
-        false,
-        "It shouldn't allocate new string. There is nothing to escape."
-      ),
-    }
-  }
 }

@@ -1,7 +1,11 @@
 use core::fmt::Display;
 use core::time;
 
-pub type Uri = String;
+mod attributes;
+
+pub use attributes::*;
+
+pub type Uri<'a> = &'a str;
 
 pub enum XmlText<'a> {
   /// Raw HTML type. Serializer will set element's type attribute to "html" and escapes any special characters.

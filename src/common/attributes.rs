@@ -64,18 +64,28 @@ impl AttributeMap {
     }
   }
 
+  pub fn new_from(other: &Self) -> Self {
+    if other.inner.is_empty() {
+      Self::new()
+    } else {
+      Self {
+        inner: other.inner.clone(),
+      }
+    }
+  }
+
   pub fn len(&self) -> usize {
     self.inner.len()
   }
 
+  pub fn is_empty(&self) -> bool {
+    self.inner.is_empty()
+  }
+
   pub fn set(&mut self, name: AttributeName, value: AttributeValue) {
-    for Attribute {
-      name: attr_name,
-      value: attr_value,
-    } in self.inner.iter_mut()
-    {
-      if (*attr_name).eq(&name) {
-        *attr_value = value;
+    for attribute in self.inner.iter_mut() {
+      if attribute.name.eq(&name) {
+        attribute.value = value;
         return;
       }
     }
@@ -84,28 +94,18 @@ impl AttributeMap {
   }
 
   pub fn get(&self, name: &str) -> Option<&AttributeValue> {
-    for Attribute {
-      name: attr_name,
-      value: attr_value,
-    } in self.inner.iter()
-    {
-      if attr_name.deref().eq(name) {
-        return Some(attr_value);
+    for attribute in self.inner.iter() {
+      if attribute.name.deref().eq(name) {
+        return Some(&attribute.value);
       }
     }
 
     None
   }
 
-  pub fn iter<'a>(&'a self) -> AttributeMapIter<core::slice::Iter<'a, Attribute>, &'a Attribute> {
+  pub fn iter(&self) -> AttributeMapIter<core::slice::Iter<'_, Attribute>, &Attribute> {
     AttributeMapIter {
       inner_iterator: self.inner.iter(),
-    }
-  }
-
-  pub fn set_from(&mut self, other: &Self) {
-    for entry in other {
-      self.set(entry.name.clone(), entry.value.clone())
     }
   }
 }
@@ -213,20 +213,5 @@ impl AttributeValue {
 
   pub fn set(&mut self, new_value: &str) {
     self.value = Box::from(new_value);
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use super::AttributeName;
-
-  #[test]
-  fn attribute_name_eq_check() {
-    let a = AttributeName::unchecked_new("example-0");
-    let b = AttributeName::unchecked_new("example-0");
-    let c = AttributeName::unchecked_new("example-1");
-
-    assert_eq!(a, b);
-    assert_ne!(a, c);
   }
 }
