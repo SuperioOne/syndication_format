@@ -125,3 +125,38 @@ impl DateTime {
     "EMPTY"
   }
 }
+
+#[macro_export]
+macro_rules! html {
+  ($input:expr) => {
+    $crate::common::XmlText::Html(&$input)
+  };
+}
+
+#[macro_export]
+macro_rules! xhtml {
+  ($input:expr) => {
+    $crate::common::XmlText::Xhtml(&$input)
+  };
+}
+
+#[macro_export]
+macro_rules! text {
+  ($input:expr) => {
+    $crate::common::XmlText::PlainText(&$input)
+  };
+}
+
+#[macro_export]
+macro_rules! text_unchecked {
+  ($input:expr) => {
+    $crate::common::XmlText::PlainTextUnchecked(&$input)
+  };
+}
+
+#[macro_export]
+macro_rules! html_unchecked {
+  ($input:expr) => {
+    $crate::common::XmlText::HtmlUnchecked(&$input)
+  };
+}

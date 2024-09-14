@@ -28,7 +28,7 @@ enum ElementType {
   /// ```
   Empty,
 
-  /// Non empty elements with children elements or value
+  /// Non-empty elements with children elements or value
   ///
   /// Example:
   /// ```xml
@@ -37,7 +37,7 @@ enum ElementType {
   ///     ...
   ///   </test>
   /// ```
-  NoEmpty,
+  NonEmpty,
 }
 
 pub trait Serialize {
@@ -192,7 +192,7 @@ where
 
     match element_type {
       ElementType::Empty => self.writer.write_line("/>")?,
-      ElementType::NoEmpty => {
+      ElementType::NonEmpty => {
         self.writer.write_line(">")?;
         self.writer.increment_level();
       }
@@ -248,7 +248,7 @@ where
     namespace: Option<&str>,
     attributes: Option<&AttributeMap>,
   ) -> Result<Self::ElementSerializer, XmlSerializeError> {
-    self.create_element(name, namespace, attributes, ElementType::NoEmpty)?;
+    self.create_element(name, namespace, attributes, ElementType::NonEmpty)?;
 
     Ok(Self::ElementSerializer {
       inner: self,

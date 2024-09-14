@@ -7,6 +7,7 @@ use atom_syndication_format::atom::{
 use atom_syndication_format::common::{AttributeName, DateTime, XmlText};
 use atom_syndication_format::serializer::formatter::{IndentedWriter, SpaceStyle};
 use atom_syndication_format::serializer::{Serializer, XmlSerializer};
+use atom_syndication_format::{html, text};
 
 struct TestEntry {
   content: String,
@@ -63,7 +64,7 @@ fn simple_atom_feed() {
     .title
     .set_attribute(AttributeName::new("xml:lang").unwrap(), "en-US".into());
 
-  let mut subtitle = SubTitle::new(XmlText::Html("<i>Test</i>"));
+  let mut subtitle = SubTitle::new(html!("<i>Test</i>"));
   subtitle.set_attribute(AttributeName::new("xml:lang").unwrap(), "en-US".into());
 
   feed.authors.push(author);
@@ -73,15 +74,13 @@ fn simple_atom_feed() {
   feed.categories.push(Category::new("Syndication Formats"));
   feed.links.push(Link::new("https://smdd.dev"));
   feed.subtitle = Some(subtitle);
-  feed.rights = Some(Rights::new(XmlText::PlainText("Copyright Nobody")));
+  feed.rights = Some(Rights::new(text!("Copyright Nobody")));
   feed.icon = Some(Icon::new("https://fake-address.nope/icon.jpg"));
   feed.logo = Some(Logo::new("https://fake-address.nope/logo.jpg"));
 
   for e in entries.iter() {
-    let mut entry = Entry::new(&e.id, XmlText::PlainText(&e.title), DateTime::default());
-    let mut content = Content::new(ContentValue::TextContent {
-      text: XmlText::Html(&e.content),
-    });
+    let mut entry = Entry::new(&e.id, text!(&e.title), DateTime::default());
+    let mut content = Content::new(html!(&e.content).into());
 
     content.set_attribute(AttributeName::new("xml:lang").unwrap(), "en-US".into());
     content.set_attribute(
@@ -90,7 +89,7 @@ fn simple_atom_feed() {
     );
 
     entry.content = Some(content);
-    entry.summary = Some(Summary::new(XmlText::PlainText(&e.summary)));
+    entry.summary = Some(Summary::new(text!(&e.summary)));
 
     feed.entries.push(entry);
   }

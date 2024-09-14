@@ -499,6 +499,12 @@ pub enum ContentValue<'a> {
   InlinedMedia { media_type: &'a str, data: &'a str },
 }
 
+impl<'a> From<XmlText<'a>> for ContentValue<'a> {
+  fn from(value: XmlText<'a>) -> Self {
+    Self::TextContent { text: value }
+  }
+}
+
 impl<'a> Content<'a> {
   pub fn new(value: ContentValue<'a>) -> Self {
     Self {
