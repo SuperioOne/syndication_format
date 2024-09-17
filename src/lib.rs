@@ -6,4 +6,4 @@ pub mod common;
 pub mod error;
 pub mod escape;
 pub mod serializer;
-mod utils;
+pub mod utils;

@@ -1,2 +1,2 @@
 pub(crate) mod byte_search;
-pub(crate) mod name_check;
+pub(crate) mod xml_name_token;

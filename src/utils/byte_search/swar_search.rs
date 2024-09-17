@@ -16,7 +16,7 @@ macro_rules! read {
   };
 }
 
-pub struct SwarByteSearchIter<'a> {
+pub(crate) struct SwarByteSearchIter<'a> {
   input: Cow<'a, [u8]>,
   bitmap: u64,
   search_bytes: &'a [u8],

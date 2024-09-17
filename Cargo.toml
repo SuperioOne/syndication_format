@@ -9,12 +9,3 @@ repository = "https://github.com/SuperioOne/atom_syndication_format"
 default = ["std"]
 avx512 = []
 std = []
-
-[dependencies]
-
-[dev-dependencies]
-criterion = { version = "0.5" }
-
-[[bench]]
-name = "escape_benchmark"
-harness = false

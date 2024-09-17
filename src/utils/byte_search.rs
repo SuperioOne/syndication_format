@@ -10,7 +10,7 @@ pub(crate) mod avx512_search;
 pub(crate) mod swar_search;
 
 #[derive(Debug)]
-pub struct BytePosition {
+pub(crate) struct BytePosition {
   pub index: usize,
   pub value: u8,
 }

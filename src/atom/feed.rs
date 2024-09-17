@@ -2,6 +2,7 @@ use crate::{
   common::{AttributeMap, AttributeName, AttributeValue, DateTime, XmlText},
   error::XmlSerializeError,
   serializer::{ElementSerializer, Serialize},
+  utils::xml_name_token::is_valid_name,
 };
 
 use super::{
@@ -31,6 +32,12 @@ impl Serialize for Feed<'_> {
   where
     S: crate::serializer::Serializer,
   {
+    if let Some(name) = namespace.as_deref() {
+      if !is_valid_name(name) {
+        return Err(XmlSerializeError::InvalidNamespace);
+      }
+    }
+
     let mut feed = serializer.serialize_element("feed", namespace, Some(&self.attributes))?;
 
     for author in self.authors.iter() {

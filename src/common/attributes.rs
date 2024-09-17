@@ -3,7 +3,7 @@ use core::fmt::Display;
 use core::ops::Deref;
 use core::str::FromStr;
 
-use crate::error::InvalidAttributeName;
+use crate::{error::InvalidAttributeName, utils::xml_name_token::is_valid_name};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AttributeName {
@@ -103,6 +103,16 @@ impl AttributeMap {
     None
   }
 
+  pub fn has(&self, name: &str) -> bool {
+    for attribute in self.inner.iter() {
+      if attribute.name.deref().eq(name) {
+        return true;
+      }
+    }
+
+    false
+  }
+
   pub fn iter(&self) -> AttributeMapIter<core::slice::Iter<'_, Attribute>, &Attribute> {
     AttributeMapIter {
       inner_iterator: self.inner.iter(),
@@ -124,17 +134,11 @@ impl<'a> IntoIterator for &'a AttributeMap {
 
 // AttributeName impls
 
-// TODO: check attribute name validity
-
 impl FromStr for AttributeName {
   type Err = InvalidAttributeName;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    if true {
-      Ok(Self { name: Box::from(s) })
-    } else {
-      Err(InvalidAttributeName)
-    }
+    Self::new(s)
   }
 }
 
@@ -142,6 +146,12 @@ impl Deref for AttributeName {
   type Target = str;
 
   fn deref(&self) -> &Self::Target {
+    &self.name
+  }
+}
+
+impl AsRef<str> for AttributeName {
+  fn as_ref(&self) -> &str {
     &self.name
   }
 }
@@ -154,19 +164,26 @@ impl Display for AttributeName {
 
 impl AttributeName {
   pub fn new(name: &str) -> Result<Self, InvalidAttributeName> {
-    Ok(Self {
-      name: Box::from(name),
-    })
+    if is_valid_name(name) {
+      Ok(Self {
+        name: Box::from(name),
+      })
+    } else {
+      Err(InvalidAttributeName)
+    }
   }
 
-  /// Allows name check skipping for the internal well-known attribute names.
-  pub(crate) fn unchecked_new(name: &str) -> Self {
+  pub fn unchecked_new(name: &str) -> Self {
     Self {
       name: Box::from(name),
     }
   }
 
   pub fn get(&self) -> &str {
+    &self.name
+  }
+
+  pub fn as_str(&self) -> &str {
     &self.name
   }
 }
@@ -194,6 +211,12 @@ impl Deref for AttributeValue {
   }
 }
 
+impl AsRef<str> for AttributeValue {
+  fn as_ref(&self) -> &str {
+    &self.value
+  }
+}
+
 impl Display for AttributeValue {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.write_str(&self.value)
@@ -213,5 +236,9 @@ impl AttributeValue {
 
   pub fn set(&mut self, new_value: &str) {
     self.value = Box::from(new_value);
+  }
+
+  pub fn as_str(&self) -> &str {
+    &self.value
   }
 }

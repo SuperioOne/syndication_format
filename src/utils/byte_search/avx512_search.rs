@@ -1,7 +1,7 @@
 use super::BytePosition;
 use std::borrow::Cow;
 
-pub struct Avx512ByteSearchIter<'a> {
+pub(crate) struct Avx512ByteSearchIter<'a> {
   input: Cow<'a, [u8]>,
   bitmap: u64,
   search_bytes: &'a [u8],

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use super::BytePosition;
 
-pub struct Avx2ByteSearchIter<'a> {
+pub(crate) struct Avx2ByteSearchIter<'a> {
   input: Cow<'a, [u8]>,
   bitmap: u64,
   search_bytes: &'a [u8],

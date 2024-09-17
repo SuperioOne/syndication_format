@@ -104,3 +104,20 @@ fn simple_atom_feed() {
 
   assert!(true)
 }
+
+#[test]
+fn atom_feed_invalid_namespace() {
+  let feed = Feed::new("uuid", text!("test"), DateTime::default());
+  let mut bytes: Vec<u8> = Vec::new();
+  let mut writer = IndentedWriter::new(&mut bytes, SpaceStyle::WhiteSpace, 2);
+  let mut xml_serializer = XmlSerializer::new(&mut writer);
+
+  match xml_serializer.serialize(feed, Some("-123-invalid:namespace")) {
+    Ok(_) => assert!(
+      false,
+      "Feed serializer should have been failed due to invalid namespace"
+    ),
+    Err(atom_syndication_format::error::XmlSerializeError::InvalidNamespace) => assert!(true),
+    Err(_) => assert!(false, "Unexpected error type"),
+  }
+}
