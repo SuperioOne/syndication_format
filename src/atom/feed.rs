@@ -1,5 +1,5 @@
 use crate::{
-  common::{AttributeMap, AttributeName, AttributeValue, DateTime, XmlText},
+  common::{AttributeMap, AttributeName, AttributeValue, TimeStamp, XmlText},
   error::XmlSerializeError,
   serializer::{ElementSerializer, Serialize},
   utils::xml_name_token::is_valid_name,
@@ -90,7 +90,7 @@ impl Serialize for Feed<'_> {
 }
 
 impl<'a> Feed<'a> {
-  pub fn new(id: &'a str, title: XmlText<'a>, updated: DateTime) -> Self {
+  pub fn new(id: &'a str, title: XmlText<'a>, updated: TimeStamp) -> Self {
     Self {
       attributes: AttributeMap::default(),
       authors: Vec::default(),

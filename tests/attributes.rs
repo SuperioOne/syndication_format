@@ -1,5 +1,4 @@
-use atom_syndication_format::common::{AttributeMap, AttributeName, AttributeValue};
-use atom_syndication_format::error::InvalidAttributeName;
+use atom_syndication_format::common::{AttributeMap, AttributeName};
 
 #[test]
 fn attribute_map_create() {

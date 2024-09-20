@@ -1,6 +1,6 @@
 use super::ElementNode;
 use crate::{
-  common::{AttributeMap, AttributeName, AttributeValue, DateTime, LinkRelation, Uri, XmlText},
+  common::{AttributeMap, AttributeName, AttributeValue, LinkRelation, TimeStamp, XmlText},
   error::XmlSerializeError,
   serializer::{ElementSerializer, Serialize},
 };
@@ -14,11 +14,12 @@ macro_rules! impl_attribute_fns {
     }
 
     #[inline]
-    pub fn get_mut_attributes(&'a mut self) -> &'a mut AttributeMap {
+    pub fn get_mut_attributes(&mut self) -> &mut AttributeMap {
       &mut self.attributes
     }
   };
 }
+
 macro_rules! set_from_option {
   ($map:expr, $name:expr, $value:expr) => {
     if let Some(value) = $value {
@@ -293,11 +294,11 @@ impl Serialize for Generator<'_> {
 
 pub struct Icon<'a> {
   pub(crate) attributes: AttributeMap,
-  pub uri: Uri<'a>,
+  pub uri: &'a str,
 }
 
 impl<'a> Icon<'a> {
-  pub fn new(uri: Uri<'a>) -> Self {
+  pub fn new(uri: &'a str) -> Self {
     Self {
       attributes: AttributeMap::default(),
       uri,
@@ -347,7 +348,7 @@ impl Serialize for Id<'_> {
 
 pub struct Link<'a> {
   pub(crate) attributes: AttributeMap,
-  pub href: Uri<'a>,
+  pub href: &'a str,
   pub hreflang: Option<&'a str>,
   pub length: Option<usize>,
   pub link_type: Option<&'a str>,
@@ -356,7 +357,7 @@ pub struct Link<'a> {
 }
 
 impl<'a> Link<'a> {
-  pub fn new(href: Uri<'a>) -> Self {
+  pub fn new(href: &'a str) -> Self {
     Self {
       attributes: AttributeMap::default(),
       title: None,
@@ -391,11 +392,11 @@ impl Serialize for Link<'_> {
 
 pub struct Logo<'a> {
   pub(crate) attributes: AttributeMap,
-  pub uri: Uri<'a>,
+  pub uri: &'a str,
 }
 
 impl<'a> Logo<'a> {
-  pub fn new(uri: Uri<'a>) -> Self {
+  pub fn new(uri: &'a str) -> Self {
     Self {
       attributes: AttributeMap::default(),
       uri,
@@ -495,7 +496,7 @@ pub struct Content<'a> {
 
 pub enum ContentValue<'a> {
   TextContent { text: XmlText<'a> },
-  LinkContent { media_type: &'a str, src: Uri<'a> },
+  LinkContent { media_type: &'a str, src: &'a str },
   InlinedMedia { media_type: &'a str, data: &'a str },
 }
 
@@ -584,7 +585,7 @@ impl Serialize for Content<'_> {
 
 pub struct Updated {
   pub(crate) attributes: AttributeMap,
-  pub value: DateTime,
+  pub value: TimeStamp,
 }
 
 impl Serialize for Updated {
@@ -593,7 +594,7 @@ impl Serialize for Updated {
     S: crate::serializer::Serializer,
   {
     let updated = serializer.serialize_element("updated", namespace, Some(&self.attributes))?;
-    updated.serialize_str(self.value.as_str())?;
+    updated.serialize_str(&self.value.to_string())?;
     Ok(())
   }
 }

@@ -1,13 +1,18 @@
-use std::str::from_utf8_unchecked;
+use std::str::{from_utf8_unchecked, FromStr};
 
-use atom_syndication_format::atom::{
-  Author, Category, Content, ContentValue, Contributor, Entry, Feed, Icon, Link, Logo, Rights,
-  SubTitle, Summary,
+use atom_syndication_format::{
+  atom::{
+    Author, Category, Content, ContentValue, Contributor, Entry, Feed, Icon, Link, Logo, Rights,
+    SubTitle, Summary,
+  },
+  common::{AttributeName, TimeStamp, XmlText},
+  html,
+  serializer::{
+    formatter::{IndentedWriter, SpaceStyle},
+    Serializer, XmlSerializer,
+  },
+  text,
 };
-use atom_syndication_format::common::{AttributeName, DateTime, XmlText};
-use atom_syndication_format::serializer::formatter::{IndentedWriter, SpaceStyle};
-use atom_syndication_format::serializer::{Serializer, XmlSerializer};
-use atom_syndication_format::{html, text};
 
 struct TestEntry {
   content: String,
@@ -53,7 +58,7 @@ fn simple_atom_feed() {
   let mut feed = Feed::new(
     "00abcd",
     XmlText::PlainText("Hello & World"),
-    DateTime::default(),
+    TimeStamp::default(),
   );
 
   let mut author = Author::new("SuperiorOne");
@@ -79,7 +84,7 @@ fn simple_atom_feed() {
   feed.logo = Some(Logo::new("https://fake-address.nope/logo.jpg"));
 
   for e in entries.iter() {
-    let mut entry = Entry::new(&e.id, text!(&e.title), DateTime::default());
+    let mut entry = Entry::new(&e.id, text!(&e.title), TimeStamp::default());
     let mut content = Content::new(html!(&e.content).into());
 
     content.set_attribute(AttributeName::new("xml:lang").unwrap(), "en-US".into());
@@ -107,7 +112,7 @@ fn simple_atom_feed() {
 
 #[test]
 fn atom_feed_invalid_namespace() {
-  let feed = Feed::new("uuid", text!("test"), DateTime::default());
+  let feed = Feed::new("uuid", text!("test"), TimeStamp::default());
   let mut bytes: Vec<u8> = Vec::new();
   let mut writer = IndentedWriter::new(&mut bytes, SpaceStyle::WhiteSpace, 2);
   let mut xml_serializer = XmlSerializer::new(&mut writer);

@@ -1,11 +1,10 @@
 use core::fmt::Display;
-use core::time;
 
 mod attributes;
+mod timestamp;
 
 pub use attributes::*;
-
-pub type Uri<'a> = &'a str;
+pub use timestamp::*;
 
 pub enum XmlText<'a> {
   /// Raw HTML type. Serializer will set element's type attribute to "html" and escapes any special characters.
@@ -79,10 +78,6 @@ pub enum XmlText<'a> {
   PlainTextUnchecked(&'a str),
 }
 
-pub struct DateTime {
-  unix_time: time::Duration,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum LinkRelation {
   Alternate,
@@ -90,15 +85,6 @@ pub enum LinkRelation {
   SelfRel,
   Enclosure,
   Via,
-}
-
-impl Default for DateTime {
-  fn default() -> Self {
-    Self {
-      // 1970-01-01 00:00
-      unix_time: time::Duration::new(0, 0),
-    }
-  }
 }
 
 impl Display for LinkRelation {
@@ -116,13 +102,6 @@ impl LinkRelation {
       LinkRelation::Enclosure => "enclosure",
       LinkRelation::Via => "via",
     }
-  }
-}
-
-impl DateTime {
-  pub fn as_str(&self) -> &str {
-    // TODO:: There are no implemented datetime structure for now.
-    "EMPTY"
   }
 }
 

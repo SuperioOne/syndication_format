@@ -1,5 +1,5 @@
 use crate::{
-  common::{AttributeMap, AttributeName, AttributeValue, DateTime, XmlText},
+  common::{AttributeMap, AttributeName, AttributeValue, TimeStamp, XmlText},
   error::XmlSerializeError,
   serializer::{ElementSerializer, Serialize},
 };
@@ -65,7 +65,7 @@ impl Serialize for Entry<'_> {
 }
 
 impl<'a> Entry<'a> {
-  pub fn new(id: &'a str, title: XmlText<'a>, updated: DateTime) -> Self {
+  pub fn new(id: &'a str, title: XmlText<'a>, updated: TimeStamp) -> Self {
     Self {
       attributes: AttributeMap::default(),
       authors: Vec::default(),
