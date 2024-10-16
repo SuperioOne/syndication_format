@@ -21,3 +21,13 @@ impl From<InvalidAttributeName> for XmlSerializeError {
     Self::InvalidAttributeName
   }
 }
+
+#[derive(Debug)]
+pub enum TimeStampFormatErrors {
+  InvalidFormat,
+  UnsupportedYear,
+  NonExistingDate,
+  InvalidTime,
+  InvalidDate,
+  InvalidTimeOffset,
+}

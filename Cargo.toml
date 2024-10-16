@@ -1,9 +1,9 @@
 [package]
-name = "atom_syndication_format"
+name = "syndication_format"
 version = "0.1.0"
 edition = "2021"
-homepage = "https://github.com/SuperioOne/atom_syndication_format"
-repository = "https://github.com/SuperioOne/atom_syndication_format"
+homepage = "https://github.com/SuperioOne/syndication_format"
+repository = "https://github.com/SuperioOne/syndication_format"
 
 [features]
 default = ["std"]

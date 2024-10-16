@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "atom_syndication_format"
+name = "syndication_format"
 version = "0.1.0"
